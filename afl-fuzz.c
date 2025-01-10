@@ -4473,13 +4473,15 @@ static void write_stats_file(double bitmap_cvg, double stability, double eps) {
 
 static void maybe_update_plot_file(double bitmap_cvg, double eps) {
 
-  static u32 prev_qp, prev_pf, prev_pnf, prev_ce, prev_md;
+  static u32 prev_qp, prev_pf, prev_pnf, prev_ce, prev_md, prev_nodes, prev_edges;
   static u64 prev_qc, prev_uc, prev_uh;
 
   if (prev_qp == queued_paths && prev_pf == pending_favored &&
       prev_pnf == pending_not_fuzzed && prev_ce == current_entry &&
       prev_qc == queue_cycle && prev_uc == unique_crashes &&
-      prev_uh == unique_hangs && prev_md == max_depth) return;
+      prev_uh == unique_hangs && prev_md == max_depth &&
+      prev_nodes == agnnodes(ipsm) && prev_edges == agnedges(ipsm))
+      return;
 
   prev_qp  = queued_paths;
   prev_pf  = pending_favored;
@@ -4489,6 +4491,8 @@ static void maybe_update_plot_file(double bitmap_cvg, double eps) {
   prev_uc  = unique_crashes;
   prev_uh  = unique_hangs;
   prev_md  = max_depth;
+  prev_nodes = agnnodes(ipsm);
+  prev_edges = agnedges(ipsm);
 
   /* Fields in the file:
 
@@ -4497,10 +4501,10 @@ static void maybe_update_plot_file(double bitmap_cvg, double eps) {
      execs_per_sec */
 
   fprintf(plot_file,
-          "%llu, %llu, %u, %u, %u, %u, %0.02f%%, %llu, %llu, %u, %0.02f\n",
+          "%llu, %llu, %u, %u, %u, %u, %0.02f%%, %llu, %llu, %u, %0.02f, %u, %d, %d\n",
           get_cur_time() / 1000, queue_cycle - 1, current_entry, queued_paths,
           pending_not_fuzzed, pending_favored, bitmap_cvg, unique_crashes,
-          unique_hangs, max_depth, eps); /* ignore errors */
+          unique_hangs, max_depth, eps, state_ids_count, prev_nodes, prev_edges); /* ignore errors */
 
   fflush(plot_file);
 
