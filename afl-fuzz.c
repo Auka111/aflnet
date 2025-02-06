@@ -704,15 +704,17 @@ u32 update_scores_and_select_next_state(u8 mode) {
   //Update the states' score
   for(i = 0; i < state_ids_count; i++) {
     u32 state_id = state_ids[i];
-
+    rare_branch_count = count_rare_branches(state);
+    #ifdef DEBUG
+    printf("Rare Branch Count: %u\n", rare_branch_count);
+    #endif
+    fflush(stdout);
     k = kh_get(hms, khms_states, state_id);
     if (k != kh_end(khms_states)) {
       state = kh_val(khms_states, k);
       switch(mode) {
         case FAVOR:
 		  if(vanilla_afl){
-		    rare_branch_count = count_rare_branches(state);
-			printf("Rare Branch Count: %u\n", rare_branch_count);  // 输出稀有分支的数量
             state->score = ceil(1000 * pow(2, -log10(log10(state->fuzzs + 1) * state->selected_times + 1)) * pow(2, log(state->paths_discovered + 1)));	
             break;
 		  }
