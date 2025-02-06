@@ -306,6 +306,7 @@ static u64 hit_bits[MAP_SIZE];
 static u32 vanilla_afl = 100;
 static u32 MAX_RARE_BRANCHES = 256;//ϡ\D3з\D6֧\B5\C4\D7\EE\B4\F3\CA\FD\C1\BF\A3\AC\C9\E8\D6\C3Ϊ256
 static int rare_branch_exp = 4;
+static int rare_branch_count=0;
 
 /* Interesting values, as per config.h */
 
@@ -691,7 +692,7 @@ int count_rare_branches(state_info_t *state) {
 /* Calculate state scores and select the next state */
 u32 update_scores_and_select_next_state(u8 mode) {
   u32 result = 0, i;
-  int rare_branch_count=0;
+  rare_branch_count=0;
 
   if (state_ids_count == 0) return 0;
 
@@ -5158,6 +5159,9 @@ static void show_stats(void) {
 
   sprintf(tmp, "%s%s", DI(unique_hangs),
          (unique_hangs >= KEEP_UNIQUE_HANG) ? "+" : "");
+
+  SAYF(bV bSTOP "   rare_branch_count : " cRST "%-34d ", rare_branch_count);
+
 
   SAYF(bV bSTOP "  last uniq hang : " cRST "%-34s " bSTG bV bSTOP
        "   uniq hangs : " cRST "%-6s " bSTG bV "\n",
