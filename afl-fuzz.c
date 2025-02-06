@@ -704,15 +704,6 @@ u32 update_scores_and_select_next_state(u8 mode) {
   //Update the states' score
   for(i = 0; i < state_ids_count; i++) {
     u32 state_id = state_ids[i];
-    // 打开文件用于保存输出，追加模式（"a"）以避免覆盖原有内容
-    FILE *output_file = fopen("output.txt", "a");
-    if (output_file == NULL) {
-        // 如果文件打开失败，打印错误信息
-        perror("Error opening file");
-    } else {
-        fprintf(output_file, "Rare Branch Count: %u\n", rare_branch_count);
-        fclose(output_file);
-    }
     k = kh_get(hms, khms_states, state_id);
     if (k != kh_end(khms_states)) {
       state = kh_val(khms_states, k);
@@ -4534,11 +4525,13 @@ static void maybe_update_plot_file(double bitmap_cvg, double eps) {
      favored_not_fuzzed, unique_crashes, unique_hangs, max_depth,
      execs_per_sec */
 
+  int rare_branch_count=0;
+  rare_branch_count = count_rare_branches(state);
   fprintf(plot_file,
-          "%llu, %llu, %u, %u, %u, %u, %0.02f%%, %llu, %llu, %u, %0.02f, %u, %d, %d\n",
+          "%llu, %llu, %u, %u, %u, %u, %0.02f%%, %llu, %llu, %u, %0.02f, %u, %d, %d, %d\n",
           get_cur_time() / 1000, queue_cycle - 1, current_entry, queued_paths,
           pending_not_fuzzed, pending_favored, bitmap_cvg, unique_crashes,
-          unique_hangs, max_depth, eps, state_ids_count, prev_nodes, prev_edges); /* ignore errors */
+          unique_hangs, max_depth, eps, state_ids_count, prev_nodes, prev_edges,rare_branch_count); /* ignore errors */
 
   fflush(plot_file);
 
