@@ -36,7 +36,6 @@
 #define _GNU_SOURCE
 #endif
 #define _FILE_OFFSET_BITS 64
-#define DEBUG1 fileonly
 
 #include "config.h"
 #include "types.h"
@@ -693,10 +692,8 @@ static int* get_lowest_hit_branch_ids(){
   }
 
   if (ret_list_size == 0){
-    DEBUG1("Was returning list of size 0\n");
     if (lowest_hob != INT_MAX) {	// 如果列表为空但是lowest_hob的值变化了，阈值调大一个量级再执行一次
       rare_branch_exp = lowest_hob + 1;
-      DEBUG1("Upped max exp to %i\n", rare_branch_exp);
       ck_free(rare_branch_ids);
       return get_lowest_hit_branch_ids();
     }
