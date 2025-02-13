@@ -305,7 +305,7 @@ static u64 hit_bits[MAP_SIZE];
 
 static u32 vanilla_afl = 100;
 static u32 MAX_RARE_BRANCHES = 256;//ϡ\D3з\D6֧\B5\C4\D7\EE\B4\F3\CA\FD\C1\BF\A3\AC\C9\E8\D6\C3Ϊ256
-static int rare_branch_exp = 2;
+static int rare_branch_exp = 4;
 
 /* Interesting values, as per config.h */
 
@@ -653,40 +653,76 @@ u32 index_search(u32 *A, u32 n, u32 val) {
   return index;
 }
 
-int count_rare_branches(state_info_t *state) {
-    if (!state) return 0;
-	int lowest_hob = INT_MAX;
-	int ret_list_size=0;
-    // \B1\E9\C0\FA\CB\F9\D3п\C9\C4ܵķ\D6֧
-    for (int b = 0; (b < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); b++) {
-        // \BC\EC\B2\E9\B7\D6֧\CAǷ񱻸\B2\B8\C7
-        if (state->branch_coverage_map[b]>0) {
-            // \BC\C6\CB\E3\B8÷\D6֧\B5\C4\D7\EE\B8\DF\D3\D0Чλ
-            int cur_hits = state->branch_coverage_map[b]; // \BC\D9\C9\E8 b \B7\B4ӳ\B7\D6֧\C3\FC\D6д\CE\CA\FD
-            int highest_order_bit = 0;
-            while (cur_hits >>= 1) { // \BC\C6\CB\E3\D7\EE\B8\DF\D3\D0Чλ
-                highest_order_bit++;
-            }
-            lowest_hob = highest_order_bit < lowest_hob ? highest_order_bit : lowest_hob;
+static int contains_id(int branch_id, int* branch_ids){
+  for (int i = 0; branch_ids[i] != -1; i++){
+    if (branch_ids[i] == branch_id) return 1;
+	}
+  return 0;
+}
 
-            // \C5ж\CF\CAǷ\F1Ϊϡ\D3з\D6֧
-            if (highest_order_bit < rare_branch_exp) {
-                if (highest_order_bit < rare_branch_exp - 1){
-                      rare_branch_exp = highest_order_bit + 1;
-                      ret_list_size = 0;	// \C7\E5\BF\D5ԭ\D3\D0\C1б\ED
-                }
-			    ret_list_size++;
-            }
+int count_rare_branches(state_info_t *state) {
+
+  int * rarest_branches = get_lowest_hit_branch_ids();	// 稀有分支列表  MAX_RARE_BRANCHES = 256
+  int hit_conut = 0;
+
+  for (int i = 0; i < MAP_SIZE ; i ++){
+      if (state->branch_coverage_map[i] > 0){	// 如果命中
+        int cur_index = i;
+        int is_rare = contains_id(cur_index, rarest_branches);	// 是否是稀有分支
+        if (is_rare) {	// 如果是稀有分支
+          hit_count++;
         }
-    }
-	if (ret_list_size == 0){
-        if (lowest_hob != INT_MAX) {
-           rare_branch_exp = lowest_hob + 1;
-           return count_rare_branches(state);
+      }
+  }
+  return hit_count;
+}
+
+//求动态阈值，同时得到稀有分支列表
+static int* get_lowest_hit_branch_ids(){
+  int * rare_branch_ids = ck_alloc(sizeof(int) * MAX_RARE_BRANCHES);	// MAX_RARE_BRANCHES = 256
+  int lowest_hob = INT_MAX;
+  int ret_list_size = 0;
+
+  for (int i = 0; (i < MAP_SIZE) && (ret_list_size < MAX_RARE_BRANCHES - 1); i++){
+    // ignore unseen branches. sparse array -> unlikely
+    if (unlikely(hit_bits[i] > 0)){	// hit_bits 所有分支的命中次数
+      unsigned int long cur_hits = hit_bits[i];
+      int highest_order_bit = 0;
+      while(cur_hits >>=1)	// 找大于 最少命中次数 的第一个2的次幂
+          highest_order_bit++;
+      lowest_hob = highest_order_bit < lowest_hob ? highest_order_bit : lowest_hob;
+      if (highest_order_bit < rare_branch_exp){		// rare_branch_exp 该变量是界定稀有分支的阈值
+        // if we are an order of magnitude smaller, prioritize the
+        // rarer branches
+        // 如果求得的highest_order_bit比阈值rare_branch_exp还要第一个量级（也是减1的原因），更新阈值
+        if (highest_order_bit < rare_branch_exp - 1){
+          rare_branch_exp = highest_order_bit + 1;
+          // everything else that came before had way more hits
+          // than this one, so remove from list
+          ret_list_size = 0;	// 清空原有列表
+        }
+        rare_branch_ids[ret_list_size] = i;	// 保存稀有分支
+        ret_list_size++;
+      }
+
     }
   }
-  return ret_list_size;
+
+  if (ret_list_size == 0){
+    DEBUG1("Was returning list of size 0\n");
+    if (lowest_hob != INT_MAX) {	// 如果列表为空但是lowest_hob的值变化了，阈值调大一个量级再执行一次
+      rare_branch_exp = lowest_hob + 1;
+      DEBUG1("Upped max exp to %i\n", rare_branch_exp);
+      ck_free(rare_branch_ids);
+      return get_lowest_hit_branch_ids();
+    }
+  }
+
+  rare_branch_ids[ret_list_size] = -1;	// 添加结束标志
+  return rare_branch_ids;	// 返回稀有分支列表
+
 }
+
 
 /* Calculate state scores and select the next state */
 u32 update_scores_and_select_next_state(u8 mode) {
@@ -873,7 +909,8 @@ void update_state_aware_variables(struct queue_entry *q, u8 dry_run)
   unsigned int *state_sequence = (*extract_response_codes)(response_buf, response_buf_size, &state_count);
 
   q->unique_state_count = get_unique_state_count(state_sequence, state_count);
-  // \B8\FC\D0\C2״̬\D0\F2\C1\D0\D6\D0\CB\F9\D3\D0״̬\B5ķ\D6֧\B8\B2\B8\C7ͼ
+
+  /位置可能需要修改？
   update_state_branch_coverage(state_sequence, state_count);
 
   if (is_state_sequence_interesting(state_sequence, state_count)) {
