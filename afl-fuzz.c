@@ -710,7 +710,7 @@ static int* get_lowest_hit_branch_ids(){
 int count_rare_branches(state_info_t *state) {
 
   int * rarest_branches = get_lowest_hit_branch_ids();	// 稀有分支列表  MAX_RARE_BRANCHES = 256
-  int hit_conut = 0;
+  int hit_count = 0;
 
   for (int i = 0; i < MAP_SIZE ; i ++){
       if (state->branch_coverage_map[i] > 0){	// 如果命中
