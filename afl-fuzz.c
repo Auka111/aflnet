@@ -660,22 +660,6 @@ static int contains_id(int branch_id, int* branch_ids){
   return 0;
 }
 
-int count_rare_branches(state_info_t *state) {
-
-  int * rarest_branches = get_lowest_hit_branch_ids();	// 稀有分支列表  MAX_RARE_BRANCHES = 256
-  int hit_conut = 0;
-
-  for (int i = 0; i < MAP_SIZE ; i ++){
-      if (state->branch_coverage_map[i] > 0){	// 如果命中
-        int cur_index = i;
-        int is_rare = contains_id(cur_index, rarest_branches);	// 是否是稀有分支
-        if (is_rare) {	// 如果是稀有分支
-          hit_count++;
-        }
-      }
-  }
-  return hit_count;
-}
 
 //求动态阈值，同时得到稀有分支列表
 static int* get_lowest_hit_branch_ids(){
@@ -723,6 +707,22 @@ static int* get_lowest_hit_branch_ids(){
 
 }
 
+int count_rare_branches(state_info_t *state) {
+
+  int * rarest_branches = get_lowest_hit_branch_ids();	// 稀有分支列表  MAX_RARE_BRANCHES = 256
+  int hit_conut = 0;
+
+  for (int i = 0; i < MAP_SIZE ; i ++){
+      if (state->branch_coverage_map[i] > 0){	// 如果命中
+        int cur_index = i;
+        int is_rare = contains_id(cur_index, rarest_branches);	// 是否是稀有分支
+        if (is_rare) {	// 如果是稀有分支
+          hit_count++;
+        }
+      }
+  }
+  return hit_count;
+}
 
 /* Calculate state scores and select the next state */
 u32 update_scores_and_select_next_state(u8 mode) {
@@ -910,7 +910,7 @@ void update_state_aware_variables(struct queue_entry *q, u8 dry_run)
 
   q->unique_state_count = get_unique_state_count(state_sequence, state_count);
 
-  /位置可能需要修改？
+  //位置可能需要修改？
   update_state_branch_coverage(state_sequence, state_count);
 
   if (is_state_sequence_interesting(state_sequence, state_count)) {
