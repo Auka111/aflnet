@@ -302,9 +302,9 @@ static u8* (*post_handler)(u8* buf, u32* len);
 
 static u64 hit_bits[MAP_SIZE];   
 
-static u32 vanilla_afl = 50;
+static u32 vanilla_afl = 100;
 static u32 MAX_RARE_BRANCHES = 256;//ϡ\D3з\D6֧\B5\C4\D7\EE\B4\F3\CA\FD\C1\BF\A3\AC\C9\E8\D6\C3Ϊ256
-static int rare_branch_exp = 2;
+static int rare_branch_exp = 4;
 
 /* Interesting values, as per config.h */
 
