@@ -302,9 +302,22 @@ static u8* (*post_handler)(u8* buf, u32* len);
 
 static u64 hit_bits[MAP_SIZE];   
 
-static u32 vanilla_afl = 500;
+static u32 vanilla_afl = 1000;
 static u32 MAX_RARE_BRANCHES = 256;//ϡ\D3з\D6֧\B5\C4\D7\EE\B4\F3\CA\FD\C1\BF\A3\AC\C9\E8\D6\C3Ϊ256
 static int rare_branch_exp = 4;
+
+static double ideal_fuzzs=0;
+static double neg_ideal_fuzzs=1000000;
+static double ideal_selected=0;
+static double neg_ideal_selected=1000000;
+static double ideal_paths=0;
+static double neg_ideal_paths=1000000;
+static double ideal_rare=0;
+static double neg_ideal_rare=1000000;
+static double sum_fuzzs=0;
+static double sum_selected=0;
+static double sum_paths=0;
+static double sum_rare=0;
 
 /* Interesting values, as per config.h */
 
@@ -721,6 +734,33 @@ int count_rare_branches(state_info_t *state) {
   return hit_count;
 }
 
+// 定义TOPSIS函数
+double topsis_score(double fuzzs, double selected_times, double paths_discovered, double rare_branch_count) {
+    // 归一化处理
+    double norm_fuzzs = fuzzs / sqrt(sum_fuzzs);
+    double norm_rare = rare_branch_count / sqrt(sum_rare);
+    double norm_selected = selected_times / sqrt(sum_selected);
+    double norm_paths = paths_discovered / sqrt(sum_paths);
+
+    // 加权处理
+    double weight_fuzzs = 0.3;
+    double weight_selected = 0.3;
+    double weight_paths = 0.3;
+    double weight_rare = 0.1;
+    double weighted_fuzzs = norm_fuzzs * weight_fuzzs;
+    double weighted_rare = norm_rare * weight_rare;
+    double weighted_selected = norm_selected * weight_selected;
+    double weighted_paths = norm_paths * weight_paths;
+
+    // 计算距离
+    double dist_ideal = sqrt(pow(weighted_rare - ideal_rare, 2) + pow(weighted_selected - ideal_selected, 2) + pow(weighted_paths - ideal_paths, 2) + pow(weighted_fuzzs - ideal_fuzzs, 2));
+    double dist_neg_ideal = sqrt(pow(weighted_rare - neg_ideal_rare, 2) + pow(weighted_selected - neg_ideal_selected, 2) + pow(weighted_paths - neg_ideal_paths, 2) + pow(weighted_fuzzs - neg_ideal_fuzzs, 2));
+
+    // 计算接近度
+    double closeness = dist_neg_ideal / (dist_ideal + dist_neg_ideal);
+    return closeness;
+}
+
 /* Calculate state scores and select the next state */
 u32 update_scores_and_select_next_state(u8 mode) {
   u32 result = 0, i;
@@ -734,6 +774,31 @@ u32 update_scores_and_select_next_state(u8 mode) {
 
   khint_t k;
   state_info_t *state;
+  for(i = 0; i < state_ids_count; i++) {
+    u32 state_id = state_ids[i];
+    k = kh_get(hms, khms_states, state_id);
+    if (k != kh_end(khms_states)) {
+      state = kh_val(khms_states, k);
+      rare_branch_count = count_rare_branches(state);
+      switch(mode) {
+        case FAVOR:
+         if(!vanilla_afl){
+           if(1.0/state->fuzzs>ideal_fuzzs) ideal_fuzzs=1.0/state->fuzzs;
+           if(1.0/state->selected_times>ideal_selected) ideal_selected=1.0/state->selected_times;
+           if(state->paths_discovered>ideal_paths) ideal_paths=state->paths_discovered;
+           if(rare_branch_count>ideal_rare) ideal_rare=rare_branch_count;
+           if(1.0/state->fuzzs<neg_ideal_fuzzs) neg_ideal_fuzzs=1.0/state->fuzzs;
+           if(1.0/state->selected_times<neg_ideal_selected) neg_ideal_selected=1.0/state->selected_times;
+           if(state->paths_discovered<neg_ideal_paths) neg_ideal_paths=state->paths_discovered;
+           if(rare_branch_count<neg_ideal_rare) neg_ideal_rare=rare_branch_count;
+           sum_fuzzs+=(1.0/state->fuzzs)*(1.0/state->fuzzs);
+           sum_selected+=(1.0/state->selected_times)*(1.0/state->selected_times);
+           sum_paths+=state->paths_discovered*state->paths_discovered;
+           sum_rare+=rare_branch_count*rare_branch_count;
+         }
+      }
+    }
+  }
   //Update the states' score
   for(i = 0; i < state_ids_count; i++) {
     u32 state_id = state_ids[i];
@@ -741,14 +806,6 @@ u32 update_scores_and_select_next_state(u8 mode) {
     if (k != kh_end(khms_states)) {
       state = kh_val(khms_states, k);
       rare_branch_count = count_rare_branches(state);
-      FILE *output_file = fopen("rare_branch_count_output.txt", "a");
-      if (output_file == NULL) {
-          perror("Error opening file");
-      } else {
-          // 写入 rare_branch_count 到文件
-          fprintf(output_file, "State ID: %u, Rare Branch Count: %u\n", state_id, rare_branch_count);
-          fclose(output_file);  // 关闭文件
-      }
       switch(mode) {
         case FAVOR:
 		  if(vanilla_afl){
@@ -757,7 +814,7 @@ u32 update_scores_and_select_next_state(u8 mode) {
 		  }
 		  else{
 		    rare_branch_count = count_rare_branches(state);
-            state->score = ceil(1000 * pow(2, -log10(log10(state->fuzzs + 1) * state->selected_times + 1)) * pow(2, log(state->paths_discovered + 1)) * pow(2, log(rare_branch_count + 1)));
+            state->score = 1000 * topsis_score(1.0/state->fuzzs, 1.0/state->selected_times, state->paths_discovered,rare_branch_count);
             break;
 		  }
         //other cases are reserved
