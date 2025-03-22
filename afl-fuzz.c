@@ -745,7 +745,7 @@ double topsis_score(double fuzzs, double selected_times, double paths_discovered
     double norm_paths =0;
     if(fuzzs != 0) norm_fuzzs = fuzzs / sqrt(sum_fuzzs);
     if(rare_branch_count != 0) norm_rare = rare_branch_count / sqrt(sum_rare);
-    if(selected_time != 0) norm_selected = selected_times / sqrt(sum_selected);
+    if(selected_times != 0) norm_selected = selected_times / sqrt(sum_selected);
     if(paths_discovered != 0) norm_paths = paths_discovered / sqrt(sum_paths);
 
     // 加权处理
