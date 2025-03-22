@@ -306,6 +306,8 @@ static u32 vanilla_afl = 1000;
 static u32 MAX_RARE_BRANCHES = 256;//ϡ\D3з\D6֧\B5\C4\D7\EE\B4\F3\CA\FD\C1\BF\A3\AC\C9\E8\D6\C3Ϊ256
 static int rare_branch_exp = 4;
 
+static double max_fuzzs=0;
+static double max_selected=0;
 static double ideal_fuzzs=0;
 static double neg_ideal_fuzzs=1000000;
 static double ideal_selected=0;
@@ -783,16 +785,31 @@ u32 update_scores_and_select_next_state(u8 mode) {
       switch(mode) {
         case FAVOR:
          if(!vanilla_afl){
-           if(1.0/state->fuzzs>ideal_fuzzs) ideal_fuzzs=1.0/state->fuzzs;
-           if(1.0/state->selected_times>ideal_selected) ideal_selected=1.0/state->selected_times;
+           if(state->fuzzs>max_fuzzs) max_fuzzs=state->fuzzs;
+           if(state->selected_times>max_selected) max_selected=state->selected_times;
+         }
+      }
+    }
+  }
+  for(i = 0; i < state_ids_count; i++) {
+    u32 state_id = state_ids[i];
+    k = kh_get(hms, khms_states, state_id);
+    if (k != kh_end(khms_states)) {
+      state = kh_val(khms_states, k);
+      rare_branch_count = count_rare_branches(state);
+      switch(mode) {
+        case FAVOR:
+         if(!vanilla_afl){
+           if((max_fuzzs-state->fuzzs)>ideal_fuzzs) ideal_fuzzs=max_fuzzs-state->fuzzs;
+           if((max_selected-state->selected_times)>ideal_selected) ideal_selected=max_selected-state->selected_times;
            if(state->paths_discovered>ideal_paths) ideal_paths=state->paths_discovered;
            if(rare_branch_count>ideal_rare) ideal_rare=rare_branch_count;
-           if(1.0/state->fuzzs<neg_ideal_fuzzs) neg_ideal_fuzzs=1.0/state->fuzzs;
-           if(1.0/state->selected_times<neg_ideal_selected) neg_ideal_selected=1.0/state->selected_times;
+           if((max_fuzzs-state->fuzzs)<neg_ideal_fuzzs) neg_ideal_fuzzs=max_fuzzs-state->fuzzs;
+           if((max_selected-state->selected_times)<neg_ideal_selected) neg_ideal_selected=max_selected-state->selected_times;
            if(state->paths_discovered<neg_ideal_paths) neg_ideal_paths=state->paths_discovered;
            if(rare_branch_count<neg_ideal_rare) neg_ideal_rare=rare_branch_count;
-           sum_fuzzs+=(1.0/state->fuzzs)*(1.0/state->fuzzs);
-           sum_selected+=(1.0/state->selected_times)*(1.0/state->selected_times);
+           sum_fuzzs+=(max_fuzzs-state->fuzzs)*(max_fuzzs-state->fuzzs);
+           sum_selected+=(max_selected-state->selected_times)*(max_selected-state->selected_times);
            sum_paths+=state->paths_discovered*state->paths_discovered;
            sum_rare+=rare_branch_count*rare_branch_count;
          }
@@ -814,7 +831,7 @@ u32 update_scores_and_select_next_state(u8 mode) {
 		  }
 		  else{
 		    rare_branch_count = count_rare_branches(state);
-            state->score = 1000 * topsis_score(1.0/state->fuzzs, 1.0/state->selected_times, state->paths_discovered,rare_branch_count);
+            state->score = 1000 * topsis_score(max_fuzzs-state->fuzzs, max_selected-state->selected_times, state->paths_discovered,rare_branch_count);
             break;
 		  }
         //other cases are reserved
