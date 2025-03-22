@@ -743,10 +743,10 @@ double topsis_score(double fuzzs, double selected_times, double paths_discovered
     double norm_rare = 0;
     double norm_selected = 0;
     double norm_paths =0;
-    if(fuzzs != 0) norm_fuzzs = fuzzs / sqrt(sum_fuzzs);
-    if(rare_branch_count != 0) norm_rare = rare_branch_count / sqrt(sum_rare);
-    if(selected_times != 0) norm_selected = selected_times / sqrt(sum_selected);
-    if(paths_discovered != 0) norm_paths = paths_discovered / sqrt(sum_paths);
+    if(sum_fuzzs > 0) norm_fuzzs = fuzzs / sqrt(sum_fuzzs);
+    if(sum_rare > 0) norm_rare = rare_branch_count / sqrt(sum_rare);
+    if(sum_selected > 0) norm_selected = selected_times / sqrt(sum_selected);
+    if(sum_paths > 0) norm_paths = paths_discovered / sqrt(sum_paths);
 
     // 加权处理
     double weight_fuzzs = 0.3;
@@ -762,6 +762,7 @@ double topsis_score(double fuzzs, double selected_times, double paths_discovered
     double dist_ideal = sqrt(pow(weighted_rare - ideal_rare, 2) + pow(weighted_selected - ideal_selected, 2) + pow(weighted_paths - ideal_paths, 2) + pow(weighted_fuzzs - ideal_fuzzs, 2));
     double dist_neg_ideal = sqrt(pow(weighted_rare - neg_ideal_rare, 2) + pow(weighted_selected - neg_ideal_selected, 2) + pow(weighted_paths - neg_ideal_paths, 2) + pow(weighted_fuzzs - neg_ideal_fuzzs, 2));
 
+    if(dist_neg_ideal == 0) return 0;
     // 计算接近度
     double closeness = dist_neg_ideal / (dist_ideal + dist_neg_ideal);
     return closeness;
