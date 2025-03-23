@@ -849,12 +849,20 @@ u32 update_scores_and_select_next_state(u8 mode) {
       switch(mode) {
         case FAVOR:
 		  if(vanilla_afl){
-            state->score = ceil(1000 * pow(2, -log10(log10(state->fuzzs + 1) * state->selected_times + 1)) * pow(2, log(state->paths_discovered + 1)));	
+            state->score = ceil(1000 * pow(2, -log10(log10(state->fuzzs + 1) * state->selected_times + 1)) * pow(2, log(state->paths_discovered + 1)));
+            fprintf(plot_file,  "853\n");
+            fflush(plot_file);
             break;
 		  }
 		  else{
+		    fprintf(plot_file,  "858\n");
+            fflush(plot_file);
 		    rare_branch_count = count_rare_branches(state);
-            state->score = 1000 * topsis_score(max_fuzzs-state->fuzzs, max_selected-state->selected_times, state->paths_discovered,rare_branch_count);
+		    fprintf(plot_file,  "861\n");
+            fflush(plot_file);
+            state->score = ceil(1000 * topsis_score(max_fuzzs-state->fuzzs, max_selected-state->selected_times, state->paths_discovered,rare_branch_count));
+ 		    fprintf(plot_file,  "864\n");
+            fflush(plot_file);
             break;
 		  }
         //other cases are reserved
