@@ -747,8 +747,6 @@ double topsis_score(double fuzzs, double selected_times, double paths_discovered
     if(sum_rare > 0) norm_rare = rare_branch_count / sqrt(sum_rare);
     if(sum_selected > 0) norm_selected = selected_times / sqrt(sum_selected);
     if(sum_paths > 0) norm_paths = paths_discovered / sqrt(sum_paths);
-    fprintf(plot_file,  "750\n");
-    fflush(plot_file);
     // 加权处理
     double weight_fuzzs = 0.3;
     double weight_selected = 0.3;
@@ -758,18 +756,12 @@ double topsis_score(double fuzzs, double selected_times, double paths_discovered
     double weighted_rare = norm_rare * weight_rare;
     double weighted_selected = norm_selected * weight_selected;
     double weighted_paths = norm_paths * weight_paths;
-    fprintf(plot_file,  "761\n");
-    fflush(plot_file);
     // 计算距离
     double dist_ideal = sqrt(pow(weighted_rare - ideal_rare, 2) + pow(weighted_selected - ideal_selected, 2) + pow(weighted_paths - ideal_paths, 2) + pow(weighted_fuzzs - ideal_fuzzs, 2));
     double dist_neg_ideal = sqrt(pow(weighted_rare - neg_ideal_rare, 2) + pow(weighted_selected - neg_ideal_selected, 2) + pow(weighted_paths - neg_ideal_paths, 2) + pow(weighted_fuzzs - neg_ideal_fuzzs, 2));
-    fprintf(plot_file,  "766\n");
-    fflush(plot_file);
     if(dist_neg_ideal == 0) return 0;
     // 计算接近度
     double closeness = dist_neg_ideal / (dist_ideal + dist_neg_ideal);
-    fprintf(plot_file,  "771\n");
-    fflush(plot_file);
     return closeness;
 }
 
@@ -850,19 +842,11 @@ u32 update_scores_and_select_next_state(u8 mode) {
         case FAVOR:
 		  if(vanilla_afl){
             state->score = ceil(1000 * pow(2, -log10(log10(state->fuzzs + 1) * state->selected_times + 1)) * pow(2, log(state->paths_discovered + 1)));
-            fprintf(plot_file,  "853\n");
-            fflush(plot_file);
             break;
 		  }
 		  else{
-		    fprintf(plot_file,  "858\n");
-            fflush(plot_file);
 		    rare_branch_count = count_rare_branches(state);
-		    fprintf(plot_file,  "861\n");
-            fflush(plot_file);
             state->score = ceil(1000 * topsis_score(max_fuzzs-state->fuzzs, max_selected-state->selected_times, state->paths_discovered,rare_branch_count));
- 		    fprintf(plot_file,  "864\n");
-            fflush(plot_file);
             break;
 		  }
         //other cases are reserved
